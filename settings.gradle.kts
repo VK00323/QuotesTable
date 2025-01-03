@@ -21,4 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Quotes Table"
 include(":app")
- 
+include(":data")
+include(":core")
+include(":features:quotes")
