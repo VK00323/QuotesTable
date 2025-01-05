@@ -1,4 +1,4 @@
-package com.example.data.websocket.events
+package com.example.core.events
 
 import com.google.gson.annotations.SerializedName
 

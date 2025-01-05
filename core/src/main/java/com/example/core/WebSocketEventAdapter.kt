@@ -1,6 +1,6 @@
-package com.example.data.websocket
+package com.example.core
 
-import com.example.data.websocket.events.QuotesUpdatesData
+import com.example.core.events.QuotesUpdatesData
 import com.google.gson.JsonDeserializationContext
 import com.google.gson.JsonDeserializer
 import com.google.gson.JsonElement

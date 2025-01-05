@@ -1,8 +1,8 @@
-package com.example.data.websocket
+package com.example.core
 
-import com.example.data.websocket.events.QuotesUpdatesData
+import com.example.core.events.QuotesUpdatesData
 
-sealed class WebSocketEvent {
+sealed class WebSocketEvent: BaseWebSocketEvent {
 
     data object Unknown : WebSocketEvent()
 

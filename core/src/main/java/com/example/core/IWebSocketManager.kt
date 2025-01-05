@@ -1,4 +1,4 @@
-package com.example.data.websocket
+package com.example.core
 
 import kotlinx.coroutines.flow.Flow
 

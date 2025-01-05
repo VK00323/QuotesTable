@@ -1,4 +1,4 @@
-package com.example.data.websocket
+package com.example.core
 
 import com.example.core.di.WebSocketUrl
 import com.google.gson.Gson
@@ -68,6 +68,7 @@ class WebSocketManager @Inject constructor (
         }
     }
 
+    //TODO Event по идее должны быть в data слое
     private fun parseMessage(message: String): WebSocketEvent {
         return try {
             gson.fromJson(message, WebSocketEvent::class.java)

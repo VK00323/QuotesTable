@@ -1,5 +1,9 @@
 package com.example.core.di
 
+import com.example.core.IWebSocketManager
+import com.example.core.WebSocketEvent
+import com.example.core.WebSocketEventAdapter
+import com.example.core.WebSocketManager
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
