@@ -26,7 +26,7 @@ annotation class WebSocketUrl
 
 @Module
 @InstallIn(SingletonComponent::class)
-class WebSocketModule {
+object WebSocketModule {
 
     @Provides
     @WebSocketUrl
