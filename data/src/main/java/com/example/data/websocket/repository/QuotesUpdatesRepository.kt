@@ -10,5 +10,4 @@ class QuotesUpdatesRepository @Inject constructor(
 ) {
     fun observeEvents(): Flow<WebSocketEvent> = webSocketManager.observeEvents()
     fun sendMessage(message: String) = webSocketManager.sendMessage(message)
-    fun connect() = webSocketManager.connect()
 }

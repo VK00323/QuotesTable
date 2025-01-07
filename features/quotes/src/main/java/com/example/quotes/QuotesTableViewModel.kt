@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.WebSocketEvent
+import com.example.core.events.QuotesUpdatesData
+import com.example.core.network.ErrorType
 import com.example.core.network.LoadingState
 import com.example.quotes.usecase.GetQuotesLabelUseCase
 import com.example.quotes.usecase.QuotesUpdatesUseCase
@@ -15,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.update
 import org.json.JSONArray
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @HiltViewModel
 class QuoteViewModel @Inject constructor(
@@ -27,10 +30,8 @@ class QuoteViewModel @Inject constructor(
 
     init {
         observeQuotesUpdateEvent()
-        quotesUpdatesUseCase.connect()
         getQuotesLabel()
-        // Todo Вынести Подключение к WebSocket
-        // Todo нужно останавливать в бэкграунде и возобновлять при появлении на переднем плане
+        // Todo Заходим без интернета что делаем?
     }
 
     private fun getQuotesLabel() {
@@ -39,16 +40,13 @@ class QuoteViewModel @Inject constructor(
                 when (state) {
                     is LoadingState.Data -> {
                         sendMessage(state.data)
-                        println("Received QuotesUpdateEvent: $state")
                         val labels = state.data
                         val quotes = labels.map { Quote(ticker = it) }
                         _quotesTableState.update { value ->
-
                             value.copy(
                                 quotes = quotes,
-                                isLoading = false,
+                                isError = false,
                             )
-
                         }
                     }
 
@@ -58,8 +56,28 @@ class QuoteViewModel @Inject constructor(
                         }
                     }
 
+                    is LoadingState.Error -> handleError(state.errorType)
+
                     else -> {}
                 }
+            }
+        }
+    }
+
+
+    private fun handleError(errorType: ErrorType) {
+        when (errorType) {
+            ErrorType.Network -> {
+                _quotesTableState.update { value ->
+                    value.copy(
+                        isLoading = false,
+                        isError = true,
+                    )
+                }
+            }
+
+            else -> {
+                //Todo Подумать как сделать лучше?
             }
         }
     }
@@ -69,31 +87,38 @@ class QuoteViewModel @Inject constructor(
             quotesUpdatesUseCase.observeEvents()
                 .collect { event ->
                     if (event is WebSocketEvent.QuotesUpdateEvent) {
-                        // Обновляем только конкретный элемент по тикеру
-                        _quotesTableState.update { currentState ->
-                            val updatedQuotes = currentState.quotes.map { quote ->
-                                if (quote.ticker == event.data.c) {
-                                    quote.copy(
-                                        exchangeLatestTrade = event.data.ltr
-                                            ?: quote.exchangeLatestTrade,
-                                        name = event.data.name2 ?: quote.name,
-                                        lastPrice = event.data.ltp ?: quote.lastPrice,
-                                        minStep = event.data.minStep ?: quote.minStep,
-                                        priceChange = event.data.chg ?: quote.priceChange,
-                                        changePercent = event.data.pcp ?: quote.changePercent,
-                                    )
-                                } else {
-                                    quote
-                                }
-                            }
-
-                            currentState.copy(
-                                quotes = updatedQuotes
-                            )
-                        }
+                        println("Received QuotesUpdateEvent: $event")
+                        handleQuotesUpdate(event)
                     }
                 }
         }
+    }
+
+    private fun handleQuotesUpdate(event: WebSocketEvent.QuotesUpdateEvent) {
+        _quotesTableState.update { currentState ->
+            currentState.copy(
+                quotes = currentState.quotes.map { it.updateWith(event.data) },
+                isLoading = false
+            )
+        }
+    }
+
+    private fun Quote.updateWith(data: QuotesUpdatesData): Quote {
+        if (ticker != data.c) return this
+
+        return copy(
+            exchangeLatestTrade = data.ltr ?: exchangeLatestTrade,
+            name = data.name2 ?: name,
+            lastPrice = data.ltp?.let { roundToMinStep(it, data.minStep) } ?: lastPrice,
+            minStep = data.minStep ?: minStep,
+            priceChange = data.chg?.let { roundToMinStep(it, data.minStep) } ?: priceChange,
+            changePercent = data.pcp ?: changePercent,
+        )
+    }
+
+    private fun roundToMinStep(value: Double?, minStep: Double?): Double? {
+        if (value == null || minStep == null) return null
+        return (value / minStep).roundToInt() * minStep
     }
 
     private fun sendMessage(tickers: List<String>) {
@@ -104,5 +129,9 @@ class QuoteViewModel @Inject constructor(
         }
         quotesUpdatesUseCase.sendMessage(subscriptionMessage.toString())
         Log.i("WebSocket", "Subscription sent: $subscriptionMessage")
+    }
+
+    fun onRetryClick() {
+        getQuotesLabel()
     }
 }

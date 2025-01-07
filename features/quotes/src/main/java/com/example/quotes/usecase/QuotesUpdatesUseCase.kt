@@ -10,7 +10,4 @@ class QuotesUpdatesUseCase @Inject constructor(
 ) {
     fun observeEvents(): Flow<WebSocketEvent> = repository.observeEvents()
     fun sendMessage(message: String) = repository.sendMessage(message)
-
-    //todo вынести
-    fun connect() = repository.connect()
 }

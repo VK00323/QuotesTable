@@ -1,5 +1,6 @@
 package com.example.data.websocket.repository
 
+import com.example.core.network.ErrorType
 import com.example.core.network.LoadingState
 import com.example.data.websocket.dataSource.IQuotesLabelApiDataSource
 import com.example.data.websocket.dataSource.IQuotesLabelLocalDataSource
@@ -24,8 +25,15 @@ class QuotesLabelRepository @Inject constructor(
                         val result = apiResult.data.tickers
                         emit(LoadingState.Data(result))
                     }
+                    //Todo это костыль, потому что сервер не работает
+                    is LoadingState.Error -> {
+                        if (apiResult.errorType == ErrorType.Network) {
+                            emit(LoadingState.Error(apiResult.errorType))
+                        } else {
+                            emit(LoadingState.Data(local.getQuotesLabel()))
+                        }
+                    }
 
-                    is LoadingState.Error -> emit(LoadingState.Data(local.getQuotesLabel()))
                     LoadingState.Idle -> emit(LoadingState.Idle)
                 }
             }

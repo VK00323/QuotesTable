@@ -1,5 +1,6 @@
 package com.example.core
 
+import android.util.Log
 import com.example.core.di.WebSocketUrl
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
@@ -16,35 +17,61 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import javax.inject.Inject
+import javax.inject.Singleton
 
-class WebSocketManager @Inject constructor (
+@Singleton
+class WebSocketManager @Inject constructor(
     @WebSocketUrl private val url: String,
     private val client: OkHttpClient,
     private val gson: Gson,
-): IWebSocketManager {
+) : IWebSocketManager {
 
     private var webSocket: WebSocket? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    @Volatile
+    private var messageQueue = mutableListOf<String>()
     private val messages = MutableSharedFlow<String>()
+
+    @Volatile
+    private var currentLifecycleState: LifecycleStateEnum? = null
+
+    // Отправка всех сообщений из очереди
+    @Synchronized
+    private fun flushQueue() {
+        messageQueue.forEach { message ->
+            webSocket?.send(message)
+        }
+    }
+
+    override fun connect(lifecycleState: LifecycleStateEnum?) {
+        disconnect(lifecycleState)
+        if (lifecycleState == LifecycleStateEnum.ON_START) {
+            val request = Request.Builder().url(url).build()
+            webSocket = client.newWebSocket(request, WebSocketListenerImpl())
+        }
+    }
 
     override fun observeEvents(): Flow<WebSocketEvent> = messages.map { parseMessage(it) }
 
-    override fun connect() {
-        val request = Request.Builder().url(url).build()
-        webSocket = client.newWebSocket(request, WebSocketListenerImpl())
-    }
-
-    override fun disconnect() {
+    override fun disconnect(lifecycleState: LifecycleStateEnum?) {
+        lifecycleState?.let { currentLifecycleState = it }
         webSocket?.close(1000, "Normal Closure")
         webSocket = null
     }
 
+    @Synchronized
     override fun sendMessage(message: String) {
+        messageQueue.add(message)
         webSocket?.send(message)
+
     }
 
     private inner class WebSocketListenerImpl : WebSocketListener() {
+
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            flushQueue()
+        }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
             scope.launch {
@@ -64,7 +91,9 @@ class WebSocketManager @Inject constructor (
     private fun reconnectWithDelay() {
         scope.launch {
             delay(2000)
-            connect()
+            if (currentLifecycleState == LifecycleStateEnum.ON_START) {
+                connect(currentLifecycleState)
+            }
         }
     }
 
