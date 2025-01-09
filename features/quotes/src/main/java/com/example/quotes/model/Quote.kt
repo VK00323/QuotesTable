@@ -1,4 +1,4 @@
-package com.example.quotes
+package com.example.quotes.model
 
 data class Quote(
     val ticker: String,

@@ -7,6 +7,8 @@ import com.example.core.WebSocketEvent
 import com.example.core.events.QuotesUpdatesData
 import com.example.core.network.ErrorType
 import com.example.core.network.LoadingState
+import com.example.quotes.model.Quote
+import com.example.quotes.model.QuotesState
 import com.example.quotes.usecase.GetQuotesLabelUseCase
 import com.example.quotes.usecase.QuotesUpdatesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel

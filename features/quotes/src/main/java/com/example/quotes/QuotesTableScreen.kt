@@ -7,14 +7,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +46,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.example.quotes.model.Quote
+import com.example.quotes.utils.getChangeColor
+import com.example.quotes.utils.positiveOrNegativeTransformedString
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Dispatchers
@@ -116,7 +116,6 @@ private fun QuoteTable(quotes: PersistentList<Quote>) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars)
             .padding(horizontal = 8.dp),
         contentPadding = PaddingValues(vertical = 12.dp)
     ) {
@@ -212,15 +211,10 @@ fun QuoteView(
                         model = getImageRequest(quote),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(imageSize)
-                            .then(
-                                if (quote.ticker.isEmpty()) Modifier.background(Color.Transparent)
-                                else Modifier
+                            .sizeIn(
+                                maxWidth = 24.dp,
+                                maxHeight = 24.dp
                             ),
-                        placeholder = ColorPainter(Color.Gray),
-                        onError = {
-                            Modifier.size(0.dp)
-                        },
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -316,18 +310,3 @@ private fun getImageRequest(quote: Quote): ImageRequest {
     return imageRequest
 }
 
-//Todo по хорошему в Utils
-fun getChangeColor(value: Double?): Color {
-    return if (value != null) {
-        if (value > 0) Color.Green else if (value < 0) Color.Red else Color.Gray
-    } else Color.Red
-}
-
-fun positiveOrNegativeTransformedString(amount: Double): String {
-    val string = amount.toBigDecimal().toString()
-    return if (amount > 0) {
-        "+$string"
-    } else {
-        string
-    }
-}

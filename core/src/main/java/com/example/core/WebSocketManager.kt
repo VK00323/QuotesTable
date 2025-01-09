@@ -26,6 +26,10 @@ class WebSocketManager @Inject constructor(
     private val gson: Gson,
 ) : IWebSocketManager {
 
+    private companion object{
+        private const val STATUS_CODE = 1000
+    }
+
     private var webSocket: WebSocket? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -55,7 +59,7 @@ class WebSocketManager @Inject constructor(
 
     override fun disconnect(lifecycleState: LifecycleStateEnum?) {
         lifecycleState?.let { currentLifecycleState = it }
-        webSocket?.close(1000, "Normal Closure")
+        webSocket?.close(STATUS_CODE, "Normal Closure")
         webSocket = null
     }
 
@@ -84,7 +88,7 @@ class WebSocketManager @Inject constructor(
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            webSocket.close(1000, null)
+            webSocket.close(STATUS_CODE, null)
             Log.d("WebSocketManager", "WebSocketManager status: onClosing $reason")
         }
     }
