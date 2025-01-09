@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">quotes</string>
+    <string name="percentage_change_pattern">%.2f%%</string>
+    <string name="retry">Retry</string>
+    <string name="loading">Loading</string>
+    <string name="quote_logo_url_pattern">https://tradernet.com/logos/get-logo-by-ticker?ticker=%1$s</string>
+    <string name="price_and_price_change__pattern">%s (%s)</string>
+
 </resources>

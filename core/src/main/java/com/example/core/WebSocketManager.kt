@@ -36,9 +36,8 @@ class WebSocketManager @Inject constructor(
     @Volatile
     private var currentLifecycleState: LifecycleStateEnum? = null
 
-    // Отправка всех сообщений из очереди
     @Synchronized
-    private fun flushQueue() {
+    private fun sendAllSavedMessage() {
         messageQueue.forEach { message ->
             webSocket?.send(message)
         }
@@ -64,13 +63,13 @@ class WebSocketManager @Inject constructor(
     override fun sendMessage(message: String) {
         messageQueue.add(message)
         webSocket?.send(message)
-
     }
 
     private inner class WebSocketListenerImpl : WebSocketListener() {
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            flushQueue()
+            sendAllSavedMessage()
+            Log.d("WebSocketManager", "WebSocketManager status: onOpen")
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
@@ -81,10 +80,12 @@ class WebSocketManager @Inject constructor(
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             reconnectWithDelay()
+            Log.d("WebSocketManager", "WebSocketManager status: onFailure ${t.message}")
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
             webSocket.close(1000, null)
+            Log.d("WebSocketManager", "WebSocketManager status: onClosing $reason")
         }
     }
 

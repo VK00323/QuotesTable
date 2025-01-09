@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -29,14 +30,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -100,30 +104,27 @@ private fun QuotesTableView(
     isError: Boolean,
     onRetryClick: () -> Unit = {},
 ) {
-    LoaderComponent(isLoading, Modifier.fillMaxSize())
-    NetworkError(isError, onRetryClick)
-    QuoteTable(quotes, isError, isLoading)
+    when {
+        isLoading -> LoaderComponent(isLoading = true)
+        isError -> NetworkError(isError = true, onRetryClick = onRetryClick)
+        else -> QuoteTable(quotes = quotes)
+    }
 }
 
 @Composable
-private fun QuoteTable(
-    quotes: PersistentList<Quote>,
-    isError: Boolean,
-    isLoading: Boolean,
-) {
-    if (!isLoading && !isError) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 8.dp)
-        ) {
-            items(quotes, key = { it.ticker }) { quote ->
-                QuoteView(
-                    quote = quote,
-                    modifier = Modifier.padding(4.dp),
-                )
-            }
+private fun QuoteTable(quotes: PersistentList<Quote>) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars)
+            .padding(horizontal = 8.dp),
+        contentPadding = PaddingValues(vertical = 12.dp)
+    ) {
+        items(quotes, key = { it.ticker.hashCode() }) { quote ->
+            QuoteView(
+                quote = quote,
+                modifier = Modifier.padding(4.dp),
+            )
         }
     }
 }
@@ -143,14 +144,11 @@ fun NetworkError(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "No Internet Connection",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Button(onClick = onRetryClick) {
-                    Text(text = "Retry")
+                Button(
+                    modifier = Modifier.padding(top = 120.dp),
+                    onClick = onRetryClick
+                ) {
+                    Text(text = stringResource(R.string.retry))
                 }
             }
         }
@@ -170,12 +168,6 @@ fun LoaderComponent(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
-                Text(
-                    text = "loading",
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .windowInsetsPadding(WindowInsets.systemBars)
-                )
             }
         }
     }
@@ -187,14 +179,12 @@ fun QuoteView(
     modifier: Modifier = Modifier,
 ) {
     val imageSize = 24.dp
-    val spacerSize = 8.dp
-    val dividerColor = Color(0xFFE0E0E0)
 
     //TODO Вернуться
-    var previousChangePercent by remember { mutableStateOf(quote.changePercent) }
-    var isHighlighted by remember { mutableStateOf(false) }
+    var previousChangePercent by rememberSaveable { mutableDoubleStateOf(quote.changePercent) }
+    var isHighlighted by rememberSaveable { mutableStateOf(false) }
     val highlightColor by remember(quote.changePercent) {
-        mutableStateOf(if ((quote.changePercent ?: 0.0) >= 0) Color.Green else Color.Red)
+        mutableStateOf(if ((quote.changePercent) >= 0) Color.Green else Color.Red)
     }
 
     LaunchedEffect(quote.changePercent) {
@@ -218,21 +208,8 @@ fun QuoteView(
                 modifier = Modifier.weight(1f)
             ) {
                 Row {
-                    val url =
-                        "https://tradernet.com/logos/get-logo-by-ticker?ticker=${quote.ticker.lowercase()}"
-                    val imageRequest = ImageRequest.Builder(LocalContext.current)
-                        .data(url)
-                        .dispatcher(Dispatchers.IO)
-                        .memoryCacheKey(url)
-                        .diskCacheKey(url)
-                        .error(null)
-                        .fallback(null)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build()
-
                     AsyncImage(
-                        model = imageRequest,
+                        model = getImageRequest(quote),
                         contentDescription = null,
                         modifier = Modifier
                             .size(imageSize)
@@ -246,7 +223,7 @@ fun QuoteView(
                         },
                     )
 
-                    Spacer(modifier = Modifier.width(spacerSize))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     // Тикер (пример: TGKA)
                     Text(
@@ -270,9 +247,8 @@ fun QuoteView(
             // Процент изменения и цена
             Column(
                 horizontalAlignment = Alignment.End,
-                modifier = Modifier.weight(1.5f)
+                modifier = Modifier.weight(1.1f)
             ) {
-                // Подсветка изменения процента
                 Box(
                     modifier = Modifier
                         .background(
@@ -282,7 +258,10 @@ fun QuoteView(
                 ) {
                     // Изменение в процентах
                     Text(
-                        text = "%.2f%%".format(quote.changePercent),
+                        text = stringResource(
+                            R.string.percentage_change_pattern,
+                            quote.changePercent,
+                        ),
                         style = MaterialTheme.typography.titleLarge,
                         color = if (isHighlighted) Color.White else getChangeColor(quote.changePercent),
                     )
@@ -290,11 +269,11 @@ fun QuoteView(
 
                 // Цена и изменение цены
                 Text(
-                    text = "${"%.2f".format(quote.lastPrice)} (${if ((quote.priceChange ?: 0.0) >= 0) "+" else ""}${
-                        "%.2f".format(
-                            quote.priceChange
-                        )
-                    })",
+                    text = stringResource(
+                        R.string.price_and_price_change__pattern,
+                        quote.lastPrice?.toBigDecimal().toString(),
+                        positiveOrNegativeTransformedString(quote.priceChange)
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -316,13 +295,39 @@ fun QuoteView(
                 .fillMaxWidth()
                 .padding(top = 8.dp, start = 8.dp, end = 8.dp),
             thickness = 1.dp,
-            color = dividerColor
+            color = MaterialTheme.colorScheme.outline
         )
     }
 }
 
+@Composable
+private fun getImageRequest(quote: Quote): ImageRequest {
+    val url = stringResource(R.string.quote_logo_url_pattern, quote.ticker.lowercase())
+    val imageRequest = ImageRequest.Builder(LocalContext.current)
+        .data(url)
+        .dispatcher(Dispatchers.IO)
+        .memoryCacheKey(url)
+        .diskCacheKey(url)
+        .error(null)
+        .fallback(null)
+        .diskCachePolicy(CachePolicy.ENABLED)
+        .memoryCachePolicy(CachePolicy.ENABLED)
+        .build()
+    return imageRequest
+}
+
+//Todo по хорошему в Utils
 fun getChangeColor(value: Double?): Color {
     return if (value != null) {
         if (value > 0) Color.Green else if (value < 0) Color.Red else Color.Gray
     } else Color.Red
+}
+
+fun positiveOrNegativeTransformedString(amount: Double): String {
+    val string = amount.toBigDecimal().toString()
+    return if (amount > 0) {
+        "+$string"
+    } else {
+        string
+    }
 }

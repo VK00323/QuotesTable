@@ -13,11 +13,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import org.json.JSONArray
+import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
-import kotlin.math.roundToInt
 
 @HiltViewModel
 class QuoteViewModel @Inject constructor(
@@ -25,13 +26,16 @@ class QuoteViewModel @Inject constructor(
     private val quotesUpdatesUseCase: QuotesUpdatesUseCase,
 ) : ViewModel() {
 
+    companion object{
+        const val REALTIME_QUOTES ="realtimeQuotes"
+    }
+
     private val _quotesTableState = MutableStateFlow(QuotesState())
     val quotesTableState: StateFlow<QuotesState> = _quotesTableState.asStateFlow()
 
     init {
         observeQuotesUpdateEvent()
         getQuotesLabel()
-        // Todo Заходим без интернета что делаем?
     }
 
     private fun getQuotesLabel() {
@@ -105,26 +109,30 @@ class QuoteViewModel @Inject constructor(
 
     private fun Quote.updateWith(data: QuotesUpdatesData): Quote {
         if (ticker != data.c) return this
-
         return copy(
             exchangeLatestTrade = data.ltr ?: exchangeLatestTrade,
             name = data.name2 ?: name,
-            lastPrice = data.ltp?.let { roundToMinStep(it, data.minStep) } ?: lastPrice,
             minStep = data.minStep ?: minStep,
-            priceChange = data.chg?.let { roundToMinStep(it, data.minStep) } ?: priceChange,
+            lastPrice = roundToMinStep(data.ltp, data.minStep ?: minStep) ?: lastPrice,
+            priceChange = roundToMinStep(data.chg, data.minStep ?: minStep) ?: priceChange,
             changePercent = data.pcp ?: changePercent,
         )
     }
 
-    private fun roundToMinStep(value: Double?, minStep: Double?): Double? {
-        if (value == null || minStep == null) return null
-        return (value / minStep).roundToInt() * minStep
+    private fun roundToMinStep(value: Double?, minStep: Double): Double? {
+        if (value == null) return null
+        val bigDecimalValue = BigDecimal.valueOf(value)
+        val bigDecimalMinStep = BigDecimal.valueOf(minStep)
+        val roundedValue = bigDecimalValue.divide(bigDecimalMinStep, 0, RoundingMode.DOWN)
+            .multiply(bigDecimalMinStep)
+        val plainString = roundedValue.stripTrailingZeros().toPlainString()
+        return BigDecimal(plainString).toDouble()
     }
 
     private fun sendMessage(tickers: List<String>) {
         val tickersArray = JSONArray(tickers)
         val subscriptionMessage = JSONArray().apply {
-            put("realtimeQuotes")
+            put(REALTIME_QUOTES)
             put(tickersArray)
         }
         quotesUpdatesUseCase.sendMessage(subscriptionMessage.toString())

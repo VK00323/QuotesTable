@@ -2,10 +2,10 @@ package com.example.quotes
 
 data class Quote(
     val ticker: String,
-    val changePercent: Double? = null,
+    val changePercent: Double = 0.0,
     val name: String? = null,
     val lastPrice: Double? = null,
-    val priceChange: Double? = null,
+    val priceChange: Double = 0.0,
     val exchangeLatestTrade: String? = null,
-    val minStep : Double? = null,
+    val minStep: Double = 0.001,
 )

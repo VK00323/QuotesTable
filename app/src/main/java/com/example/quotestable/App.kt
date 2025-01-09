@@ -40,7 +40,6 @@ class App : Application(), ImageLoaderFactory {
                 } else {
                     webSocketManager.disconnect()
                 }
-                Log.d("NetworkMonitor", "Network status: $isConnected")
             }
         }
     }
@@ -55,7 +54,7 @@ class App : Application(), ImageLoaderFactory {
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(5 * 128 * 128)
+                    .maxSizeBytes(5 * 1024 * 1024)
                     .build()
             }
             .logger(DebugLogger())
