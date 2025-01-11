@@ -65,7 +65,7 @@ fun QuotesTablePreview() {
                 "Sberbank",
                 100.0,
                 10.0,
-                "MCX"
+                "MCX",
             ),
             Quote(
                 "VTB",
@@ -73,7 +73,7 @@ fun QuotesTablePreview() {
                 "VTB",
                 122.2,
                 10.0,
-                "SPB"
+                "SPB",
             )
         ).toPersistentList(),
         isLoading = false,
@@ -117,7 +117,7 @@ private fun QuoteTable(quotes: PersistentList<Quote>) {
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp),
-        contentPadding = PaddingValues(vertical = 12.dp)
+        contentPadding = PaddingValues(vertical = 12.dp),
     ) {
         items(quotes, key = { it.ticker.hashCode() }) { quote ->
             QuoteView(
@@ -138,14 +138,14 @@ fun NetworkError(
         Box(
             modifier = modifier
                 .fillMaxSize(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Button(
                     modifier = Modifier.padding(top = 120.dp),
-                    onClick = onRetryClick
+                    onClick = onRetryClick,
                 ) {
                     Text(text = stringResource(R.string.retry))
                 }
@@ -164,7 +164,7 @@ fun LoaderComponent(
             Box(
                 modifier = modifier
                     .fillMaxSize(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
             }
@@ -177,7 +177,6 @@ fun QuoteView(
     quote: Quote,
     modifier: Modifier = Modifier,
 ) {
-    val imageSize = 24.dp
 
     //TODO Вернуться
     var previousChangePercent by rememberSaveable { mutableDoubleStateOf(quote.changePercent) }
@@ -202,77 +201,17 @@ fun QuoteView(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Информация о тикере
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row {
-                    AsyncImage(
-                        model = getImageRequest(quote),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .sizeIn(
-                                maxWidth = 24.dp,
-                                maxHeight = 24.dp
-                            ),
-                    )
+            TickerInfo(
+                quote,
+                Modifier.weight(1f),
+            )
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Тикер (пример: TGKA)
-                    Text(
-                        text = quote.ticker,
-                        style = MaterialTheme.typography.titleLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip
-                    )
-                }
-
-                // Биржа и название бумаги (пример: MCX | TGK-1)
-                Text(
-                    text = "${quote.exchangeLatestTrade} | ${quote.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Процент изменения и цена
-            Column(
-                horizontalAlignment = Alignment.End,
-                modifier = Modifier.weight(1.1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = if (isHighlighted) highlightColor else Color.Transparent,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                ) {
-                    // Изменение в процентах
-                    Text(
-                        text = stringResource(
-                            R.string.percentage_change_pattern,
-                            quote.changePercent,
-                        ),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = if (isHighlighted) Color.White else getChangeColor(quote.changePercent),
-                    )
-                }
-
-                // Цена и изменение цены
-                Text(
-                    text = stringResource(
-                        R.string.price_and_price_change__pattern,
-                        quote.lastPrice?.toBigDecimal().toString(),
-                        positiveOrNegativeTransformedString(quote.priceChange)
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            PriceInfo(
+                isHighlighted,
+                highlightColor,
+                quote,
+                Modifier.weight(1.1f),
+            )
 
             Spacer(modifier = Modifier.width(4.dp))
 
@@ -280,7 +219,7 @@ fun QuoteView(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.Gray,
-                modifier = Modifier.size(imageSize)
+                modifier = Modifier.size(24.dp),
             )
         }
 
@@ -289,9 +228,111 @@ fun QuoteView(
                 .fillMaxWidth()
                 .padding(top = 8.dp, start = 8.dp, end = 8.dp),
             thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.outline,
         )
     }
+}
+
+@Composable
+private fun PriceInfo(
+    isHighlighted: Boolean,
+    highlightColor: Color,
+    quote: Quote,
+    modifier: Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.End,
+        modifier = modifier,
+    ) {
+        PercentageChange(
+            isHighlighted,
+            highlightColor,
+            quote,
+        )
+
+        Text(
+            text = stringResource(
+                R.string.price_and_price_change__pattern,
+                quote.lastPrice?.toBigDecimal().toString(),
+                positiveOrNegativeTransformedString(quote.priceChange)
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun PercentageChange(
+    isHighlighted: Boolean,
+    highlightColor: Color,
+    quote: Quote,
+) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = if (isHighlighted) highlightColor else Color.Transparent,
+                shape = RoundedCornerShape(8.dp),
+            )
+    ) {
+        Text(
+            text = stringResource(
+                R.string.percentage_change_pattern,
+                quote.changePercent,
+            ),
+            style = MaterialTheme.typography.titleLarge,
+            color = if (isHighlighted) Color.White else getChangeColor(quote.changePercent),
+        )
+    }
+}
+
+@Composable
+private fun TickerInfo(quote: Quote, modifier: Modifier) {
+    Column(
+        modifier = modifier
+    ) {
+        Row {
+            TickerImage(quote)
+            Spacer(modifier = Modifier.width(8.dp))
+            Ticker(quote)
+        }
+        ExchangeAndName(quote)
+    }
+}
+
+@Composable
+private fun TickerImage(quote: Quote) {
+    AsyncImage(
+        model = getImageRequest(quote),
+        contentDescription = null,
+        modifier = Modifier
+            .sizeIn(
+                maxWidth = 24.dp,
+                maxHeight = 24.dp
+            ),
+    )
+}
+
+@Composable
+private fun ExchangeAndName(quote: Quote) {
+    Text(
+        text = "${quote.exchangeLatestTrade} | ${quote.name}",
+        style = MaterialTheme.typography.bodyMedium,
+        color = Color.Gray,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun Ticker(quote: Quote) {
+    Text(
+        text = quote.ticker,
+        style = MaterialTheme.typography.titleLarge,
+        maxLines = 1,
+        overflow = TextOverflow.Clip
+    )
 }
 
 @Composable

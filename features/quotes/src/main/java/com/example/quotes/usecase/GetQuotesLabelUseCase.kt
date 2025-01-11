@@ -11,7 +11,7 @@ class GetQuotesLabelUseCase @Inject constructor(
     private val quotesRepository: IQuotesLabelRepository,
 ) {
 
-    fun getQuotesLabel(): Flow<LoadingState<List<String>>> {
+    operator fun invoke(): Flow<LoadingState<List<String>>> {
         return quotesRepository.getQuotesLabel(
             QuotesLabelRequestDto(
                 "getTopSecurities",

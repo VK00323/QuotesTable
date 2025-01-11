@@ -28,8 +28,8 @@ class QuoteViewModel @Inject constructor(
     private val quotesUpdatesUseCase: QuotesUpdatesUseCase,
 ) : ViewModel() {
 
-    companion object{
-        const val REALTIME_QUOTES ="realtimeQuotes"
+    companion object {
+        const val REALTIME_QUOTES = "realtimeQuotes"
     }
 
     private val _quotesTableState = MutableStateFlow(QuotesState())
@@ -42,7 +42,7 @@ class QuoteViewModel @Inject constructor(
 
     private fun getQuotesLabel() {
         viewModelScope.launch {
-            labelUseCase.getQuotesLabel().collect { state ->
+            labelUseCase().collect { state ->
                 when (state) {
                     is LoadingState.Data -> {
                         sendMessage(state.data)
@@ -93,7 +93,7 @@ class QuoteViewModel @Inject constructor(
             quotesUpdatesUseCase.observeEvents()
                 .collect { event ->
                     if (event is WebSocketEvent.QuotesUpdateEvent) {
-                        println("Received QuotesUpdateEvent: $event")
+                        Log.d("Received QuotesUpdateEvent", "event: $event")
                         handleQuotesUpdate(event)
                     }
                 }
@@ -138,7 +138,6 @@ class QuoteViewModel @Inject constructor(
             put(tickersArray)
         }
         quotesUpdatesUseCase.sendMessage(subscriptionMessage.toString())
-        Log.i("WebSocket", "Subscription sent: $subscriptionMessage")
     }
 
     fun onRetryClick() {
