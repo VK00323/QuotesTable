@@ -9,34 +9,30 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.core.NetworkMonitor
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.quotes.QuotesTableView
-import kotlinx.coroutines.launch
+import com.example.quotestable.MainViewModel
+import com.example.quotestable.R
 
 @Composable
-fun AppContent(networkMonitor: NetworkMonitor) {
+fun AppContent(viewModel: MainViewModel) {
+    val networkState = viewModel.networkState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-    val isConnected = remember { mutableStateOf(true) }
+    val context = LocalContext.current
 
-    LaunchedEffect(networkMonitor) {
-        networkMonitor.networkStatus().collect { status ->
-            isConnected.value = status
-            if (!status) {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = "Lost internet connection",
-                        duration = SnackbarDuration.Indefinite
-                    )
-                }
-            } else {
-                snackbarHostState.currentSnackbarData?.dismiss()
-            }
+    LaunchedEffect(networkState.value)
+    {
+        if (networkState.value) {
+            snackbarHostState.currentSnackbarData?.dismiss()
+        } else {
+            snackbarHostState.showSnackbar(
+                message = context.getString(R.string.lost_internet_connection),
+                duration = SnackbarDuration.Indefinite
+            )
         }
     }
 

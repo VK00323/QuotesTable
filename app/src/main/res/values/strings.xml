@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Quotes Table</string>
+    <string name="lost_internet_connection">Lost internet connection</string>
 </resources>
