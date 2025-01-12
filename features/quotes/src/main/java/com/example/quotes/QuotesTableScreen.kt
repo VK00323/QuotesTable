@@ -26,13 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,7 +46,6 @@ import com.example.quotes.utils.positiveOrNegativeTransformedString
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 
 @Preview(showBackground = true)
 @Composable
@@ -143,12 +136,17 @@ fun NetworkError(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+
                 Button(
                     modifier = Modifier.padding(top = 120.dp),
                     onClick = onRetryClick,
                 ) {
                     Text(text = stringResource(R.string.retry))
                 }
+                Text(
+                    text = stringResource(R.string.internet_lost_description),
+                    modifier = Modifier.padding(top = 16.dp)
+                )
             }
         }
     }
@@ -177,22 +175,8 @@ fun QuoteView(
     quote: Quote,
     modifier: Modifier = Modifier,
 ) {
-
-    //TODO Вернуться
-    var previousChangePercent by rememberSaveable { mutableDoubleStateOf(quote.percentageChange) }
-    var isHighlighted by rememberSaveable { mutableStateOf(false) }
-    val highlightColor by remember(quote.percentageChange) {
-        mutableStateOf(if ((quote.percentageChange) >= 0) Color.Green else Color.Red)
-    }
-
-    LaunchedEffect(quote.percentageChange) {
-        if (quote.percentageChange != previousChangePercent) {
-            isHighlighted = true
-            delay(500)
-            isHighlighted = false
-            previousChangePercent = quote.percentageChange
-        }
-    }
+    val isHighlighted = quote.isHighlightNeeded
+    val highlightColor = quote.highlightColor
 
     Column(
         modifier = modifier.fillMaxWidth()
@@ -236,7 +220,7 @@ fun QuoteView(
 @Composable
 private fun PriceInfo(
     isHighlighted: Boolean,
-    highlightColor: Color,
+    highlightColor: Int,
     quote: Quote,
     modifier: Modifier,
 ) {
@@ -266,13 +250,13 @@ private fun PriceInfo(
 @Composable
 private fun PercentageChange(
     isHighlighted: Boolean,
-    highlightColor: Color,
+    highlightColor: Int,
     quote: Quote,
 ) {
     Box(
         modifier = Modifier
             .background(
-                color = if (isHighlighted) highlightColor else Color.Transparent,
+                color = if (isHighlighted) Color(highlightColor) else Color.Transparent,
                 shape = RoundedCornerShape(8.dp),
             )
     ) {
@@ -317,7 +301,12 @@ private fun TickerImage(quote: Quote) {
 @Composable
 private fun ExchangeAndName(quote: Quote) {
     Text(
-        text = "${quote.exchangeLatestTrade} | ${quote.name}",
+        text = buildString {
+            append(quote.exchangeLatestTrade)
+            if (!quote.name.isNullOrEmpty()) {
+                append(" | ${quote.name}")
+            }
+        },
         style = MaterialTheme.typography.bodyMedium,
         color = Color.Gray,
         maxLines = 1,
