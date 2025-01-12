@@ -1,9 +1,9 @@
 package com.example.core.di
 
-import com.example.core.IWebSocketManager
-import com.example.core.WebSocketEvent
-import com.example.core.WebSocketEventAdapter
-import com.example.core.WebSocketManager
+import com.example.core.webscoket.BaseWebSocketEvent
+import com.example.core.webscoket.IWebSocketManager
+import com.example.core.webscoket.WebSocketEventAdapter
+import com.example.core.webscoket.WebSocketManager
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -46,7 +46,7 @@ object WebSocketModule {
     @Singleton
     fun provideGson(): Gson {
         return GsonBuilder()
-            .registerTypeAdapter(WebSocketEvent::class.java, WebSocketEventAdapter())
+            .registerTypeAdapter(BaseWebSocketEvent::class.java, WebSocketEventAdapter())
             .create()
     }
 }

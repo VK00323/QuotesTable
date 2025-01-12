@@ -4,7 +4,8 @@ import com.example.core.network.ErrorType
 import com.example.core.network.LoadingState
 import com.example.data.websocket.dataSource.IQuotesLabelApiDataSource
 import com.example.data.websocket.dataSource.IQuotesLabelLocalDataSource
-import com.example.data.websocket.dto.QuotesLabelRequestDto
+import com.example.data.websocket.entities.QuotesLabelRequest
+import com.example.data.websocket.mappers.mapToQuotesUpdatesDataDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
@@ -14,11 +15,11 @@ class QuotesLabelRepository @Inject constructor(
     private val local: IQuotesLabelLocalDataSource,
 ) : IQuotesLabelRepository {
 
-    override fun getQuotesLabel(request: QuotesLabelRequestDto): Flow<LoadingState<List<String>>> =
+    override fun getQuotesLabel(request: QuotesLabelRequest): Flow<LoadingState<List<String>>> =
         flow {
             emit(LoadingState.Loading)
 
-            api.getQuotesLabel(request).collect { apiResult ->
+            api.getQuotesLabel(request.mapToQuotesUpdatesDataDto()).collect { apiResult ->
                 when (apiResult) {
                     is LoadingState.Loading -> emit(LoadingState.Loading)
                     is LoadingState.Data -> {

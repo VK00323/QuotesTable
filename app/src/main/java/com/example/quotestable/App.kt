@@ -1,7 +1,6 @@
 package com.example.quotestable
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.ProcessLifecycleOwner
 import coil.ImageLoader
 import coil.ImageLoaderFactory
@@ -9,8 +8,10 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.util.DebugLogger
 import com.example.core.AppLifecycleObserver
-import com.example.core.IWebSocketManager
 import com.example.core.NetworkMonitor
+import com.example.core.webscoket.IWebSocketManager
+import com.example.core.webscoket.WebSocketEventFactory
+import com.example.data.websocket.events.QuotesUpdateEventHandler
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +31,7 @@ class App : Application(), ImageLoaderFactory {
         super.onCreate()
         networkMonitoring()
         ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver(webSocketManager))
+        registerEventHandlers()
     }
 
     private fun networkMonitoring() {
@@ -60,6 +62,10 @@ class App : Application(), ImageLoaderFactory {
             .logger(DebugLogger())
             .respectCacheHeaders(false)
             .build()
+    }
+
+    private fun registerEventHandlers() {
+        WebSocketEventFactory.register(QuotesUpdateEventHandler())
     }
 
 }

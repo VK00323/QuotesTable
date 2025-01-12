@@ -1,6 +1,7 @@
-package com.example.core
+package com.example.core.webscoket
 
 import android.util.Log
+import com.example.core.LifecycleStateEnum
 import com.example.core.di.WebSocketUrl
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
@@ -55,7 +56,7 @@ class WebSocketManager @Inject constructor(
         }
     }
 
-    override fun observeEvents(): Flow<WebSocketEvent> = messages.map { parseMessage(it) }
+    override fun observeEvents(): Flow<BaseWebSocketEvent> = messages.map { parseMessage(it) }
 
     override fun disconnect(lifecycleState: LifecycleStateEnum?) {
         lifecycleState?.let { currentLifecycleState = it }
@@ -102,12 +103,11 @@ class WebSocketManager @Inject constructor(
         }
     }
 
-    //TODO Event по идее должны быть в data слое
-    private fun parseMessage(message: String): WebSocketEvent {
+    private fun parseMessage(message: String): BaseWebSocketEvent {
         return try {
-            gson.fromJson(message, WebSocketEvent::class.java)
+            gson.fromJson(message, BaseWebSocketEvent::class.java)
         } catch (e: Exception) {
-            WebSocketEvent.Unknown
+            BaseWebSocketEvent.Unknown
         }
     }
 }

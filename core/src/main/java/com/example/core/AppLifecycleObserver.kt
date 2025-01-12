@@ -2,6 +2,7 @@ package com.example.core
 
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.example.core.webscoket.IWebSocketManager
 
 class AppLifecycleObserver(
     private val webSocketManager: IWebSocketManager,

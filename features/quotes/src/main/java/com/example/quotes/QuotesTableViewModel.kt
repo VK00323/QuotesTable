@@ -3,10 +3,10 @@ package com.example.quotes
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.core.WebSocketEvent
-import com.example.core.events.QuotesUpdatesData
 import com.example.core.network.ErrorType
 import com.example.core.network.LoadingState
+import com.example.data.websocket.entities.QuotesUpdatesData
+import com.example.data.websocket.events.WebSocketEvent
 import com.example.quotes.model.Quote
 import com.example.quotes.model.QuotesState
 import com.example.quotes.usecase.GetQuotesLabelUseCase
@@ -62,7 +62,7 @@ class QuoteViewModel @Inject constructor(
                         }
                     }
 
-                    is LoadingState.Error -> handleError(state.errorType)
+                    is LoadingState.Error -> handleNetworkError(state.errorType)
 
                     else -> {}
                 }
@@ -70,20 +70,13 @@ class QuoteViewModel @Inject constructor(
         }
     }
 
-
-    private fun handleError(errorType: ErrorType) {
-        when (errorType) {
-            ErrorType.Network -> {
-                _quotesTableState.update { value ->
-                    value.copy(
-                        isLoading = false,
-                        isError = true,
-                    )
-                }
-            }
-
-            else -> {
-                //Todo Подумать как сделать лучше?
+    private fun handleNetworkError(errorType: ErrorType) {
+        if (errorType is ErrorType.Network) {
+            _quotesTableState.update { value ->
+                value.copy(
+                    isLoading = false,
+                    isError = true,
+                )
             }
         }
     }
@@ -94,30 +87,31 @@ class QuoteViewModel @Inject constructor(
                 .collect { event ->
                     if (event is WebSocketEvent.QuotesUpdateEvent) {
                         Log.d("Received QuotesUpdateEvent", "event: $event")
-                        handleQuotesUpdate(event)
+                        handleQuotesUpdate(event.data)
                     }
                 }
         }
     }
 
-    private fun handleQuotesUpdate(event: WebSocketEvent.QuotesUpdateEvent) {
+    private fun handleQuotesUpdate(data: QuotesUpdatesData) {
         _quotesTableState.update { currentState ->
             currentState.copy(
-                quotes = currentState.quotes.map { it.updateWith(event.data) },
+                quotes = currentState.quotes.map { it.updateWith(data) },
                 isLoading = false
             )
         }
     }
 
     private fun Quote.updateWith(data: QuotesUpdatesData): Quote {
-        if (ticker != data.c) return this
+        if (ticker != data.ticker) return this
         return copy(
-            exchangeLatestTrade = data.ltr ?: exchangeLatestTrade,
-            name = data.name2 ?: name,
+            exchangeLatestTrade = data.exchangeLatestTrade ?: exchangeLatestTrade,
+            name = data.nameLatin ?: name,
             minStep = data.minStep ?: minStep,
-            lastPrice = roundToMinStep(data.ltp, data.minStep ?: minStep) ?: lastPrice,
-            priceChange = roundToMinStep(data.chg, data.minStep ?: minStep) ?: priceChange,
-            changePercent = data.pcp ?: changePercent,
+            lastPrice = roundToMinStep(data.lastTradePrice, data.minStep ?: minStep) ?: lastPrice,
+            changePrice = roundToMinStep(data.changePrice, data.minStep ?: minStep)
+                ?: changePrice,
+            percentageChange = data.percentageChange ?: percentageChange,
         )
     }
 

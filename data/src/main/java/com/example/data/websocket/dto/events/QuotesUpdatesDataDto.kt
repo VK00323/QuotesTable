@@ -1,8 +1,9 @@
-package com.example.core.events
+package com.example.data.websocket.dto.events
 
 import com.google.gson.annotations.SerializedName
 
-data class QuotesUpdatesData(
+
+data class QuotesUpdatesDataDto(
     @SerializedName("c") val c: String, // Ticker
     @SerializedName("ltr") val ltr: String?, // Exchange of the latest trade
     @SerializedName("name") val name: String?, // Name of security

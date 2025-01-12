@@ -179,18 +179,18 @@ fun QuoteView(
 ) {
 
     //TODO Вернуться
-    var previousChangePercent by rememberSaveable { mutableDoubleStateOf(quote.changePercent) }
+    var previousChangePercent by rememberSaveable { mutableDoubleStateOf(quote.percentageChange) }
     var isHighlighted by rememberSaveable { mutableStateOf(false) }
-    val highlightColor by remember(quote.changePercent) {
-        mutableStateOf(if ((quote.changePercent) >= 0) Color.Green else Color.Red)
+    val highlightColor by remember(quote.percentageChange) {
+        mutableStateOf(if ((quote.percentageChange) >= 0) Color.Green else Color.Red)
     }
 
-    LaunchedEffect(quote.changePercent) {
-        if (quote.changePercent != previousChangePercent) {
+    LaunchedEffect(quote.percentageChange) {
+        if (quote.percentageChange != previousChangePercent) {
             isHighlighted = true
             delay(500)
             isHighlighted = false
-            previousChangePercent = quote.changePercent
+            previousChangePercent = quote.percentageChange
         }
     }
 
@@ -254,7 +254,7 @@ private fun PriceInfo(
             text = stringResource(
                 R.string.price_and_price_change__pattern,
                 quote.lastPrice?.toBigDecimal().toString(),
-                positiveOrNegativeTransformedString(quote.priceChange)
+                positiveOrNegativeTransformedString(quote.changePrice)
             ),
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
@@ -279,10 +279,10 @@ private fun PercentageChange(
         Text(
             text = stringResource(
                 R.string.percentage_change_pattern,
-                quote.changePercent,
+                quote.percentageChange,
             ),
             style = MaterialTheme.typography.titleLarge,
-            color = if (isHighlighted) Color.White else getChangeColor(quote.changePercent),
+            color = if (isHighlighted) Color.White else getChangeColor(quote.percentageChange),
         )
     }
 }

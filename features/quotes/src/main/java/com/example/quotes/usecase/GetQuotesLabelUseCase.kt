@@ -1,8 +1,8 @@
 package com.example.quotes.usecase
 
 import com.example.core.network.LoadingState
-import com.example.data.websocket.dto.QuoteLabelParamsDto
-import com.example.data.websocket.dto.QuotesLabelRequestDto
+import com.example.data.websocket.entities.QuoteLabelParams
+import com.example.data.websocket.entities.QuotesLabelRequest
 import com.example.data.websocket.repository.IQuotesLabelRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -13,9 +13,9 @@ class GetQuotesLabelUseCase @Inject constructor(
 
     operator fun invoke(): Flow<LoadingState<List<String>>> {
         return quotesRepository.getQuotesLabel(
-            QuotesLabelRequestDto(
+            QuotesLabelRequest(
                 "getTopSecurities",
-                QuoteLabelParamsDto(
+                QuoteLabelParams(
                     "stocks",
                     "russia",
                     0,
