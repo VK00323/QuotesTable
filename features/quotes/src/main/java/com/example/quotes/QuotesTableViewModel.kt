@@ -1,17 +1,19 @@
 package com.example.quotes
 
+import android.graphics.Color
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.network.ErrorType
 import com.example.core.network.LoadingState
 import com.example.data.websocket.entities.QuotesUpdatesData
-import com.example.data.websocket.events.WebSocketEvent
 import com.example.quotes.model.Quote
 import com.example.quotes.model.QuotesState
 import com.example.quotes.usecase.GetQuotesLabelUseCase
 import com.example.quotes.usecase.QuotesUpdatesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +36,7 @@ class QuoteViewModel @Inject constructor(
 
     private val _quotesTableState = MutableStateFlow(QuotesState())
     val quotesTableState: StateFlow<QuotesState> = _quotesTableState.asStateFlow()
+    private val highlightJobs = mutableMapOf<String, Job>()
 
     init {
         observeQuotesUpdateEvent()
@@ -83,37 +86,60 @@ class QuoteViewModel @Inject constructor(
 
     private fun observeQuotesUpdateEvent() {
         viewModelScope.launch {
-            quotesUpdatesUseCase.observeEvents()
-                .collect { event ->
-                    if (event is WebSocketEvent.QuotesUpdateEvent) {
-                        Log.d("Received QuotesUpdateEvent", "event: $event")
-                        handleQuotesUpdate(event.data)
-                    }
+            quotesUpdatesUseCase.observeQuotesUpdateEvents()
+                .collect { events ->
+                    Log.d("Received QuotesUpdateEvent", "event: $events")
+                    handleQuotesUpdate(events)
                 }
         }
     }
 
-    private fun handleQuotesUpdate(data: QuotesUpdatesData) {
+    private fun handleQuotesUpdate(events: List<QuotesUpdatesData>) {
+        val updatesByTicker = events.associateBy { it.ticker }
         _quotesTableState.update { currentState ->
             currentState.copy(
-                quotes = currentState.quotes.map { it.updateWith(data) },
+                quotes = currentState.quotes.map { quote ->
+                    updatesByTicker[quote.ticker]?.let { update ->
+                        quote.updateWith(update)
+                    } ?: quote
+                },
                 isLoading = false
             )
         }
     }
 
-    private fun Quote.updateWith(data: QuotesUpdatesData): Quote {
-        if (ticker != data.ticker) return this
-        return copy(
-            exchangeLatestTrade = data.exchangeLatestTrade ?: exchangeLatestTrade,
-            name = data.nameLatin ?: name,
-            minStep = data.minStep ?: minStep,
-            lastPrice = roundToMinStep(data.lastTradePrice, data.minStep ?: minStep) ?: lastPrice,
-            changePrice = roundToMinStep(data.changePrice, data.minStep ?: minStep)
-                ?: changePrice,
-            percentageChange = data.percentageChange ?: percentageChange,
-        )
-    }
+    private fun Quote.updateWith(data: QuotesUpdatesData): Quote = copy(
+        exchangeLatestTrade = data.exchangeLatestTrade ?: exchangeLatestTrade,
+        name = data.nameLatin ?: name,
+        minStep = data.minStep ?: minStep,
+        lastPrice = roundToMinStep(
+            data.lastTradePrice,
+            data.minStep ?: minStep,
+        ) ?: lastPrice,
+        changePrice = roundToMinStep(
+            data.changePrice,
+            data.minStep ?: minStep,
+        ) ?: changePrice,
+        isHighlightNeeded = processHighlight(
+            ticker = ticker,
+            old = percentageChange,
+            new = data.percentageChange,
+            isInitialLoad = isInitialLoad,
+        ),
+        highlightColor = getHighlightColor(
+            percentageChange,
+            data.percentageChange,
+        ),
+        percentageChange = data.percentageChange ?: percentageChange,
+        isInitialLoad = false,
+    )
+
+    private fun getHighlightColor(old: Double, new: Double?): Int =
+        when {
+            new == null || old == new -> Color.TRANSPARENT
+            old > new -> Color.RED
+            else -> Color.GREEN
+        }
 
     private fun roundToMinStep(value: Double?, minStep: Double): Double? {
         if (value == null) return null
@@ -123,6 +149,44 @@ class QuoteViewModel @Inject constructor(
             .multiply(bigDecimalMinStep)
         val plainString = roundedValue.stripTrailingZeros().toPlainString()
         return BigDecimal(plainString).toDouble()
+    }
+
+    private fun processHighlight(
+        ticker: String,
+        old: Double,
+        new: Double?,
+        isInitialLoad: Boolean,
+    ): Boolean {
+        val isHighlightNeeded = shouldHighlight(old, new, isInitialLoad)
+        if (isHighlightNeeded) {
+            scheduleHighlightReset(ticker)
+        }
+        return isHighlightNeeded
+    }
+
+    private fun shouldHighlight(old: Double, new: Double?, isInitialLoad: Boolean) =
+        !(isInitialLoad || new == null || old == new)
+
+    private fun scheduleHighlightReset(ticker: String) {
+        highlightJobs[ticker]?.cancel()
+
+        val job = viewModelScope.launch {
+            delay(500)
+            _quotesTableState.update { currentState ->
+                val resetQuotes = currentState.quotes.map { quote ->
+                    if (quote.ticker == ticker) {
+                        quote.copy(
+                            isHighlightNeeded = false,
+                            highlightColor = Color.TRANSPARENT,
+                        )
+                    } else {
+                        quote
+                    }
+                }
+                currentState.copy(quotes = resetQuotes)
+            }
+        }
+        highlightJobs[ticker] = job
     }
 
     private fun sendMessage(tickers: List<String>) {
