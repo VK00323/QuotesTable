@@ -1,6 +1,6 @@
 package com.example.quotes.model
 
-import android.graphics.Color
+import com.example.quotes.enums.HighlightColorEnum
 
 data class Quote(
     val ticker: String,
@@ -11,6 +11,6 @@ data class Quote(
     val exchangeLatestTrade: String? = "",
     val minStep: Double = 0.001,
     val isHighlightNeeded: Boolean = false,
-    val highlightColor: Int = Color.TRANSPARENT,
+    val highlightColor: HighlightColorEnum = HighlightColorEnum.TRANSPARENT,
     val isInitialLoad: Boolean = true
 )

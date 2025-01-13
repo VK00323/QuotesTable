@@ -4,8 +4,8 @@ import com.example.core.LifecycleStateEnum
 import kotlinx.coroutines.flow.Flow
 
 interface IWebSocketManager {
-    fun connect(lifecycleState: LifecycleStateEnum? = null)
-    fun disconnect(lifecycleState: LifecycleStateEnum? = null)
+    fun connect(lifecycleState: LifecycleStateEnum)
+    fun disconnect(lifecycleState: LifecycleStateEnum)
     fun sendMessage(message: String)
     fun observeEvents(): Flow<BaseWebSocketEvent>
 }

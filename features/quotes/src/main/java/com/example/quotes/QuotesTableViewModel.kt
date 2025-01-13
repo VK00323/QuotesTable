@@ -1,12 +1,11 @@
 package com.example.quotes
 
-import android.graphics.Color
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.network.ErrorType
 import com.example.core.network.LoadingState
 import com.example.data.websocket.entities.QuotesUpdatesData
+import com.example.quotes.enums.HighlightColorEnum
 import com.example.quotes.model.Quote
 import com.example.quotes.model.QuotesState
 import com.example.quotes.usecase.GetQuotesLabelUseCase
@@ -78,7 +77,6 @@ class QuoteViewModel @Inject constructor(
         viewModelScope.launch {
             quotesUpdatesUseCase.observeQuotesUpdateEvents()
                 .collect { events ->
-                    Log.d("Received QuotesUpdateEvent", "event: $events")
                     if (events.isNotEmpty()) handleQuotesUpdate(events)
                 }
         }
@@ -123,11 +121,11 @@ class QuoteViewModel @Inject constructor(
         isInitialLoad = false,
     )
 
-    private fun getHighlightColor(old: Double, new: Double?): Int =
+    private fun getHighlightColor(old: Double, new: Double?): HighlightColorEnum =
         when {
-            new == null || old == new -> Color.TRANSPARENT
-            old > new -> Color.RED
-            else -> Color.GREEN
+            new == null || old == new -> HighlightColorEnum.TRANSPARENT
+            old > new -> HighlightColorEnum.RED
+            else -> HighlightColorEnum.GREEN
         }
 
     private fun roundToMinStep(value: Double?, minStep: Double): Double? {
@@ -167,7 +165,7 @@ class QuoteViewModel @Inject constructor(
                     if (quote.ticker == ticker) {
                         quote.copy(
                             isHighlightNeeded = false,
-                            highlightColor = Color.TRANSPARENT,
+                            highlightColor = HighlightColorEnum.TRANSPARENT,
                         )
                     } else {
                         quote

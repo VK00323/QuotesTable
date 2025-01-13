@@ -1,6 +1,5 @@
 package com.example.core.webscoket
 
-import android.util.Log
 import com.example.core.LifecycleStateEnum
 import com.example.core.di.WebSocketUrl
 import com.google.gson.Gson
@@ -36,7 +35,7 @@ class WebSocketManager @Inject constructor(
 
     @Volatile
     private var messageQueue = mutableListOf<String>()
-    private val messages = MutableSharedFlow<String>()
+    private val messages = MutableSharedFlow<String>(replay = 1)
 
     @Volatile
     private var currentLifecycleState: LifecycleStateEnum? = null
@@ -48,20 +47,18 @@ class WebSocketManager @Inject constructor(
         }
     }
 
-    override fun connect(lifecycleState: LifecycleStateEnum?) {
+    override fun connect(lifecycleState: LifecycleStateEnum) {
         disconnect(lifecycleState)
-        if (lifecycleState == LifecycleStateEnum.ON_START) {
-            val request = Request.Builder().url(url).build()
-            webSocket = client.newWebSocket(request, WebSocketListenerImpl())
-        }
+        val request = Request.Builder().url(url).build()
+        webSocket = client.newWebSocket(request, WebSocketListenerImpl())
     }
 
     override fun observeEvents(): Flow<BaseWebSocketEvent> = messages.map { parseMessage(it) }
 
-    override fun disconnect(lifecycleState: LifecycleStateEnum?) {
-        lifecycleState?.let { currentLifecycleState = it }
-        webSocket?.close(STATUS_CODE, "Normal Closure")
-        webSocket = null
+    override fun disconnect(lifecycleState: LifecycleStateEnum) {
+            currentLifecycleState = lifecycleState
+            webSocket?.close(STATUS_CODE, "Normal Closure")
+            webSocket = null
     }
 
     @Synchronized
@@ -74,7 +71,6 @@ class WebSocketManager @Inject constructor(
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
             sendAllSavedMessage()
-            Log.d("WebSocketManager", "WebSocketManager status: onOpen")
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
@@ -85,20 +81,18 @@ class WebSocketManager @Inject constructor(
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             reconnectWithDelay()
-            Log.d("WebSocketManager", "WebSocketManager status: onFailure ${t.message}")
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
             webSocket.close(STATUS_CODE, null)
-            Log.d("WebSocketManager", "WebSocketManager status: onClosing $reason")
         }
     }
 
     private fun reconnectWithDelay() {
         scope.launch {
-            delay(2000)
+            delay(3000)
             if (currentLifecycleState == LifecycleStateEnum.ON_START) {
-                connect(currentLifecycleState)
+                connect(LifecycleStateEnum.ON_START)
             }
         }
     }

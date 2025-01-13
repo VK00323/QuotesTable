@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,9 +40,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.example.quotes.enums.HighlightColorEnum
 import com.example.quotes.model.Quote
 import com.example.quotes.model.QuotesState
-import com.example.quotes.utils.getChangeColor
 import com.example.quotes.utils.positiveOrNegativeTransformedString
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Dispatchers
@@ -192,7 +193,7 @@ fun QuoteView(
 @Composable
 private fun PriceInfo(
     isHighlighted: Boolean,
-    highlightColor: Int,
+    highlightColor: HighlightColorEnum,
     quote: Quote,
     modifier: Modifier,
 ) {
@@ -222,13 +223,13 @@ private fun PriceInfo(
 @Composable
 private fun PercentageChange(
     isHighlighted: Boolean,
-    highlightColor: Int,
+    highlightColor: HighlightColorEnum,
     quote: Quote,
 ) {
     Box(
         modifier = Modifier
             .background(
-                color = if (isHighlighted) Color(highlightColor) else Color.Transparent,
+                color = if (isHighlighted) getHighlightColor(highlightColor) else Color.Transparent,
                 shape = RoundedCornerShape(8.dp),
             )
     ) {
@@ -310,5 +311,21 @@ private fun getImageRequest(quote: Quote): ImageRequest {
         .memoryCachePolicy(CachePolicy.ENABLED)
         .build()
     return imageRequest
+}
+
+@Composable
+fun getHighlightColor(highlightColor: HighlightColorEnum): Color {
+    return when (highlightColor) {
+        HighlightColorEnum.TRANSPARENT -> Color.Transparent
+        HighlightColorEnum.RED -> Color.Red
+        HighlightColorEnum.GREEN -> colorResource(id = R.color.custom_green)
+    }
+}
+
+@Composable
+fun getChangeColor(value: Double?): Color {
+    return if (value != null) {
+        if (value > 0) colorResource(id = R.color.custom_green) else if (value < 0) Color.Red else Color.Gray
+    } else Color.Red
 }
 
