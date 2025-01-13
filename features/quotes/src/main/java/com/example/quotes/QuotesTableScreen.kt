@@ -263,7 +263,7 @@ private fun PercentageChange(
         Text(
             text = stringResource(
                 R.string.percentage_change_pattern,
-                quote.percentageChange,
+                positiveOrNegativeTransformedString(quote.percentageChange)
             ),
             style = MaterialTheme.typography.titleLarge,
             color = if (isHighlighted) Color.White else getChangeColor(quote.percentageChange),

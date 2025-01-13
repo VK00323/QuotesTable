@@ -11,6 +11,7 @@ import com.example.quotes.model.Quote
 import com.example.quotes.model.QuotesState
 import com.example.quotes.usecase.GetQuotesLabelUseCase
 import com.example.quotes.usecase.QuotesUpdatesUseCase
+import com.example.quotes.usecase.SendWebSocketMessageUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -28,6 +29,7 @@ import javax.inject.Inject
 class QuoteViewModel @Inject constructor(
     private val labelUseCase: GetQuotesLabelUseCase,
     private val quotesUpdatesUseCase: QuotesUpdatesUseCase,
+    private val sendMessageUseCase: SendWebSocketMessageUseCase,
 ) : ViewModel() {
 
     companion object {
@@ -37,6 +39,7 @@ class QuoteViewModel @Inject constructor(
     private val _quotesTableState = MutableStateFlow(QuotesState())
     val quotesTableState: StateFlow<QuotesState> = _quotesTableState.asStateFlow()
     private val highlightJobs = mutableMapOf<String, Job>()
+    private var getQuotesLabelJob: Job? = null
 
     init {
         observeQuotesUpdateEvent()
@@ -44,7 +47,8 @@ class QuoteViewModel @Inject constructor(
     }
 
     private fun getQuotesLabel() {
-        viewModelScope.launch {
+        getQuotesLabelJob?.cancel()
+        getQuotesLabelJob = viewModelScope.launch {
             labelUseCase().collect { state ->
                 when (state) {
                     is LoadingState.Data -> {
@@ -89,7 +93,7 @@ class QuoteViewModel @Inject constructor(
             quotesUpdatesUseCase.observeQuotesUpdateEvents()
                 .collect { events ->
                     Log.d("Received QuotesUpdateEvent", "event: $events")
-                    handleQuotesUpdate(events)
+                    if (events.isNotEmpty()) handleQuotesUpdate(events)
                 }
         }
     }
@@ -195,7 +199,7 @@ class QuoteViewModel @Inject constructor(
             put(REALTIME_QUOTES)
             put(tickersArray)
         }
-        quotesUpdatesUseCase.sendMessage(subscriptionMessage.toString())
+        sendMessageUseCase(subscriptionMessage.toString())
     }
 
     fun onRetryClick() {

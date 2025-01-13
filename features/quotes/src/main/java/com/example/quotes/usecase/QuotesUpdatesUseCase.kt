@@ -3,12 +3,14 @@ package com.example.quotes.usecase
 import com.example.data.websocket.entities.QuotesUpdatesData
 import com.example.data.websocket.events.WebSocketEvent
 import com.example.data.websocket.repository.QuotesUpdatesRepository
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class QuotesUpdatesUseCase @Inject constructor(
@@ -18,29 +20,35 @@ class QuotesUpdatesUseCase @Inject constructor(
         private const val QUOTES_UPDATES_ACCUMULATION_DELAY = 1000L
     }
 
-    fun sendMessage(message: String) = repository.sendMessage(message)
+    fun observeQuotesUpdateEvents(): Flow<List<QuotesUpdatesData>> = flow {
+        val buffer = mutableMapOf<String, QuotesUpdatesData>()
 
-    @OptIn(FlowPreview::class)
-    fun observeQuotesUpdateEvents(): Flow<List<QuotesUpdatesData>> {
-        return repository.observeEvents()
-            .filterIsInstance<WebSocketEvent.QuotesUpdateEvent>()
-            .scan(mutableMapOf<String, QuotesUpdatesData>()) { eventsBuffer, push ->
-                val eventData = push.data
-                val existingPush = eventsBuffer[eventData.ticker]
-                eventsBuffer[eventData.ticker] = if (existingPush != null) {
-                    mergePushes(existingPush, eventData)
-                } else {
-                    eventData
+        CoroutineScope(Dispatchers.IO).launch {
+            repository.observeEvents()
+                .filterIsInstance<WebSocketEvent.QuotesUpdateEvent>()
+                .collect { push ->
+                    synchronized(buffer) {
+                        val eventData = push.data
+                        val existingPush = buffer[eventData.ticker]
+                        buffer[eventData.ticker] = if (existingPush != null) {
+                            mergePushes(existingPush, eventData)
+                        } else {
+                            eventData
+                        }
+                    }
                 }
-                eventsBuffer
+        }
+
+        while (true) {
+            delay(QUOTES_UPDATES_ACCUMULATION_DELAY)
+            val pack = synchronized(buffer) {
+                val collectedData = buffer.values.toList()
+                buffer.clear()
+                collectedData
             }
-            .debounce(QUOTES_UPDATES_ACCUMULATION_DELAY)
-            .map { currentMap ->
-                val updatedList = currentMap.values.toList()
-                currentMap.clear()
-                updatedList
-            }
-    }
+            emit(pack)
+        }
+    }.flowOn(Dispatchers.IO)
 
     private fun mergePushes(
         oldPush: QuotesUpdatesData,
