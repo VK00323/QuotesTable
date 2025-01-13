@@ -1,7 +1,7 @@
 package com.example.quotes.model
 
-data class QuotesState(
-    val quotes: List<Quote> = listOf(),
-    val isLoading: Boolean = false,
-    val isError: Boolean = false,
-    )
+sealed interface QuotesState {
+    data class ShowQuotes(val quotes: List<Quote> = listOf()) : QuotesState
+    data object Loading : QuotesState
+    data object Error : QuotesState
+}

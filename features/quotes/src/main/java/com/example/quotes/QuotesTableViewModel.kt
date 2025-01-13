@@ -18,7 +18,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.math.BigDecimal
@@ -36,8 +35,9 @@ class QuoteViewModel @Inject constructor(
         const val REALTIME_QUOTES = "realtimeQuotes"
     }
 
-    private val _quotesTableState = MutableStateFlow(QuotesState())
+    private val _quotesTableState = MutableStateFlow<QuotesState>(QuotesState.Loading)
     val quotesTableState: StateFlow<QuotesState> = _quotesTableState.asStateFlow()
+
     private val highlightJobs = mutableMapOf<String, Job>()
     private var getQuotesLabelJob: Job? = null
 
@@ -55,23 +55,14 @@ class QuoteViewModel @Inject constructor(
                         sendMessage(state.data)
                         val labels = state.data
                         val quotes = labels.map { Quote(ticker = it) }
-                        _quotesTableState.update { value ->
-                            value.copy(
-                                quotes = quotes,
-                                isError = false,
-                            )
-                        }
+                        _quotesTableState.value = QuotesState.ShowQuotes(quotes)
                     }
 
-                    is LoadingState.Loading -> {
-                        _quotesTableState.update { value ->
-                            value.copy(isLoading = true)
-                        }
+                    is LoadingState.Loading, LoadingState.Idle  -> {
+                        _quotesTableState.value = QuotesState.Loading
                     }
 
                     is LoadingState.Error -> handleNetworkError(state.errorType)
-
-                    else -> {}
                 }
             }
         }
@@ -79,12 +70,7 @@ class QuoteViewModel @Inject constructor(
 
     private fun handleNetworkError(errorType: ErrorType) {
         if (errorType is ErrorType.Network) {
-            _quotesTableState.update { value ->
-                value.copy(
-                    isLoading = false,
-                    isError = true,
-                )
-            }
+            _quotesTableState.value = QuotesState.Error
         }
     }
 
@@ -100,15 +86,14 @@ class QuoteViewModel @Inject constructor(
 
     private fun handleQuotesUpdate(events: List<QuotesUpdatesData>) {
         val updatesByTicker = events.associateBy { it.ticker }
-        _quotesTableState.update { currentState ->
-            currentState.copy(
-                quotes = currentState.quotes.map { quote ->
-                    updatesByTicker[quote.ticker]?.let { update ->
-                        quote.updateWith(update)
-                    } ?: quote
-                },
-                isLoading = false
-            )
+        val currentState = _quotesTableState.value
+        if (currentState is QuotesState.ShowQuotes) {
+            val updatedQuotes = currentState.quotes.map { quote ->
+                updatesByTicker[quote.ticker]?.let { update ->
+                    quote.updateWith(update)
+                } ?: quote
+            }
+            _quotesTableState.value = QuotesState.ShowQuotes(updatedQuotes)
         }
     }
 
@@ -176,7 +161,8 @@ class QuoteViewModel @Inject constructor(
 
         val job = viewModelScope.launch {
             delay(500)
-            _quotesTableState.update { currentState ->
+            val currentState = _quotesTableState.value
+            if (currentState is QuotesState.ShowQuotes) {
                 val resetQuotes = currentState.quotes.map { quote ->
                     if (quote.ticker == ticker) {
                         quote.copy(
@@ -187,7 +173,7 @@ class QuoteViewModel @Inject constructor(
                         quote
                     }
                 }
-                currentState.copy(quotes = resetQuotes)
+                _quotesTableState.value = QuotesState.ShowQuotes(resetQuotes)
             }
         }
         highlightJobs[ticker] = job

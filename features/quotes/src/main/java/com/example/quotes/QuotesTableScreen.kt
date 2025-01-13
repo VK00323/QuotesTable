@@ -1,6 +1,5 @@
 package com.example.quotes
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,16 +40,16 @@ import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.example.quotes.model.Quote
+import com.example.quotes.model.QuotesState
 import com.example.quotes.utils.getChangeColor
 import com.example.quotes.utils.positiveOrNegativeTransformedString
-import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Dispatchers
 
 @Preview(showBackground = true)
 @Composable
 fun QuotesTablePreview() {
-    QuotesTableView(
+    QuoteTable(
         quotes = listOf(
             Quote(
                 "SBER",
@@ -69,11 +68,6 @@ fun QuotesTablePreview() {
                 "SPB",
             )
         ).toPersistentList(),
-        isLoading = false,
-        isError = true,
-        onRetryClick = {
-            Log.d("QuotesTablePreview", "Retry button clicked")
-        }
     )
 }
 
@@ -82,37 +76,23 @@ fun QuotesTablePreview() {
 fun QuotesTableView(viewModel: QuoteViewModel = hiltViewModel()) {
     val state by viewModel.quotesTableState.collectAsStateWithLifecycle()
 
-    QuotesTableView(
-        quotes = state.quotes.toPersistentList(),
-        isLoading = state.isLoading,
-        isError = state.isError,
-        onRetryClick = viewModel::onRetryClick,
-    )
-}
-
-@Composable
-private fun QuotesTableView(
-    quotes: PersistentList<Quote>,
-    isLoading: Boolean,
-    isError: Boolean,
-    onRetryClick: () -> Unit = {},
-) {
-    when {
-        isLoading -> LoaderComponent(isLoading = true)
-        isError -> NetworkError(isError = true, onRetryClick = onRetryClick)
-        else -> QuoteTable(quotes = quotes)
+    when (state) {
+        is QuotesState.Loading -> LoaderComponent()
+        is QuotesState.ShowQuotes -> QuoteTable(quotes = (state as QuotesState.ShowQuotes).quotes)
+        QuotesState.Error -> NetworkError(onRetryClick = viewModel::onRetryClick)
     }
 }
 
 @Composable
-private fun QuoteTable(quotes: PersistentList<Quote>) {
+private fun QuoteTable(quotes: List<Quote>) {
+    val persistentList = quotes.toPersistentList()
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp),
         contentPadding = PaddingValues(vertical = 12.dp),
     ) {
-        items(quotes, key = { it.ticker.hashCode() }) { quote ->
+        items(persistentList, key = { it.ticker.hashCode() }) { quote ->
             QuoteView(
                 quote = quote,
                 modifier = Modifier.padding(4.dp),
@@ -123,49 +103,41 @@ private fun QuoteTable(quotes: PersistentList<Quote>) {
 
 @Composable
 fun NetworkError(
-    isError: Boolean,
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (isError) {
-        Box(
-            modifier = modifier
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center,
+    Box(
+        modifier = modifier
+            .fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
 
-                Button(
-                    modifier = Modifier.padding(top = 120.dp),
-                    onClick = onRetryClick,
-                ) {
-                    Text(text = stringResource(R.string.retry))
-                }
-                Text(
-                    text = stringResource(R.string.internet_lost_description),
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+            Button(
+                modifier = Modifier.padding(top = 120.dp),
+                onClick = onRetryClick,
+            ) {
+                Text(text = stringResource(R.string.retry))
             }
+            Text(
+                text = stringResource(R.string.internet_lost_description),
+                modifier = Modifier.padding(top = 16.dp)
+            )
         }
     }
 }
 
 @Composable
-fun LoaderComponent(
-    isLoading: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    if (isLoading) {
-        Surface(modifier) {
-            Box(
-                modifier = modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
+fun LoaderComponent(modifier: Modifier = Modifier) {
+    Surface(modifier) {
+        Box(
+            modifier = modifier
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
         }
     }
 }
